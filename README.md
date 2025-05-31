@@ -11,7 +11,6 @@ This code was tested with:
 - **Kwant** 1.5.0  
 - **tqdm** 4.66.5  
 
-You can install them all at once by running:
-
-```bash
-pip install numpy==1.26.4 scipy==1.13.1 matplotlib==3.10.0 kwant==1.5.0 tqdm==4.66.5
+This repository’s scripts rely on two helper files, which are not included in standard pip packages:
+	•	FuncsChern.py
+	•	Modelos.py
