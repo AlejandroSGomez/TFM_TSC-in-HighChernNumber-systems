@@ -13,109 +13,120 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 
-def NumeroChern(Ham, params, N=51):
-    """
-    Calcula el número de Chern para un Hamiltoniano general usando el método FHS.
+def compute_chern_number(Ham, params, N=51):
+    """Compute the Chern number of a generic Hamiltonian using the FHS method.
 
-    Parámetros:
-    - Ham: función que representa el Hamiltoniano del sistema. Debe tomar kx, ky y los parámetros necesarios.
-    - params: diccionario con los parámetros del Hamiltoniano.
-    - N: Número de puntos de discretización en cada dirección k.
+    Parameters
+    ----------
+    Ham : callable
+        Hamiltonian of the system. It must take ``kx``, ``ky`` and the required
+        parameters.
+    params : dict
+        Dictionary with the Hamiltonian parameters.
+    N : int, optional
+        Number of discretization points along each momentum direction.
 
-    Retorna:
-    - Número de Chern (entero).
+    Returns
+    -------
+    float
+        The computed Chern number.
     """
-    # Establecer distancia de Red
+    # Set lattice spacing
     a = params.get('a', 1.)
     
-    # Discretizar el espacio de momentos
+    # Discretize momentum space
     kx_vals = np.linspace(-np.pi / a, np.pi / a, N, endpoint=False)
     ky_vals = np.linspace(-np.pi / a, np.pi/ a, N, endpoint=False)
     dkx = 2 * np.pi / (N * a)
     dky = 2 * np.pi / (N * a)
 
-    # Evaluar el Hamiltoniano en un punto para obtener su dimensión
+    # Evaluate the Hamiltonian to obtain its dimension
     H_sample = Ham(kx_vals[0], ky_vals[0], **params)
     dim = H_sample.shape[0]
 
-    # Inicializar una cuadrícula para almacenar los vectores propios de las bandas ocupadas
+    # Initialize an array for the occupied-band eigenvectors
     num_bandas_ocupadas = dim // 2
     eigenvectors = np.zeros((N, N, num_bandas_ocupadas, dim), dtype=complex)
 
-    # Calcular los vectores propios en cada punto k
+    # Compute eigenvectors at each k point
     for i, kx in enumerate(kx_vals):
         for j, ky in enumerate(ky_vals):
             H_k = Ham(kx, ky, **params)
             eigvals, eigvecs = LA.eigh(H_k)
-            # Asumir que las bandas inferiores están ocupadas
+            # Assume lower bands are occupied
             eigenvectors[i, j, :, :] = eigvecs[:, :num_bandas_ocupadas].T 
 
-    # Inicializar el número de Chern
+    # Initialize Chern number
     Chern_total = 0.0
 
-    # Calcular la curvatura de Berry usando el método de Link Variables
+    # Compute Berry curvature using the link variable method
     for b in range(num_bandas_ocupadas):
         Chern_banda = 0.0
         for i in range(N):
             for j in range(N):
-                # Condiciones de frontera periódicas
+                # Periodic boundary conditions
                 ip = (i + 1) % N
                 jp = (j + 1) % N
 
-                # Obtener los vectores propios de la banda b en los puntos k actuales y vecinos
+                # Get eigenvectors of band b at current and neighbor k points
                 v_ij = eigenvectors[i, j, b, :]
                 v_ipj = eigenvectors[ip, j, b, :]
                 v_ipjp = eigenvectors[ip, jp, b, :]
                 v_ijp = eigenvectors[i, jp, b, :]
 
-                # Superposiciones (variables de enlace)
+                # Overlaps (link variables)
                 U1 = np.vdot(v_ij, v_ipj)
                 U2 = np.vdot(v_ipj, v_ipjp)
                 U3 = np.vdot(v_ipjp, v_ijp)
                 U4 = np.vdot(v_ijp, v_ij)
 
-                # Calcular la curvatura de Berry para la plaqueta
+                # Compute Berry curvature for the plaquette
                 F = np.angle(U1 * U2 * U3 * U4)
                 Chern_banda += F
 
-        # Normalizar el número de Chern para la banda b
+        # Normalize Chern number for band b
         Chern_banda = Chern_banda / (2 * np.pi)
         Chern_total += Chern_banda
 
-    # Redondear al entero más cercano
+    # Round to nearest integer
     numero_chern = ((Chern_total))
 
     return numero_chern
 
-def calcular_gap(Ham, params, N_k=21):
-    """
-    Calcula el mínimo gap de energía para un par (m0, m1) sobre la malla de momentos.
+def compute_gap(Ham, params, N_k=21):
+    """Return the minimum energy gap over the momentum mesh.
 
-    Parámetros:
-    - m0, m1: Parámetros del modelo.
-    - v, a: Parámetros del sistema (por defecto 1.0).
-    - N_k: Número de puntos en cada dirección de k (kx, ky).
+    Parameters
+    ----------
+    Ham : callable
+        Hamiltonian of the system.
+    params : dict
+        Model parameters.
+    N_k : int, optional
+        Number of points along each ``k`` direction.
 
-    Retorna:
-    - El mínimo gap de energía encontrado en la malla de momentos.
+    Returns
+    -------
+    float
+        Minimum energy gap found on the mesh.
     """
-    # Establecer distancia de Red
+    # Set lattice spacing
     a = params.get('a', 1.)
     
-    # Discretización del espacio de momentos en el primer BZ
+    # Discretization of momentum space in the first BZ
     kx_vals = np.linspace(-np.pi / a, np.pi / a, N_k, endpoint=False)
     ky_vals = np.linspace(-np.pi / a, np.pi / a, N_k, endpoint=False)
     
-    min_gap = np.inf  # Inicializamos el mínimo gap con infinito
+    min_gap = np.inf  # Initialize gap with infinity
             
     for kx in kx_vals:
         for ky in ky_vals:
             H = Ham(kx, ky, **params)
-            eigvals = LA.eigvalsh(H)  # Calculamos los autovalores ordenados
-            gap = np.abs(eigvals[1] - eigvals[0])  # Gap de energía entre las dos bandas
+            eigvals = LA.eigvalsh(H)  # Compute eigenvalues
+            gap = np.abs(eigvals[1] - eigvals[0])  # Energy gap between the two bands
             if gap < min_gap:
                 min_gap = gap
-    # Barra de progreso
+    # Progress bar
     return min_gap
 
 import numpy as np
@@ -126,11 +137,11 @@ import numpy.linalg as LA
 
 
 
-# Solo sirve para sistemas H(k)=d(k)* σ
-def curvatura_de_berry_analitica(d):
+# Only valid for systems H(k)=d(k)*σ
+def analytic_berry_curvature(d):
     kx, ky, kz = sp.symbols('kx ky kz')
     
-    # Definir el vector d(k) simbólicamente
+    # Symbolic definition of the vector d(k)
     dx = d[0]
     dy = d[1]
     dz = d[2]
@@ -138,100 +149,98 @@ def curvatura_de_berry_analitica(d):
     # Vector d(k)
     d = sp.Matrix([dx, dy, dz])
 
-    # Calcular las derivadas parciales respecto a kx y ky
+    # Partial derivatives with respect to kx and ky
     d_kx = sp.Matrix([sp.diff(dx, kx), sp.diff(dy, kx), sp.diff(dz, kx)])
     d_ky = sp.Matrix([sp.diff(dx, ky), sp.diff(dy, ky), sp.diff(dz, ky)])
 
-    # Calcular el producto cruz entre las derivadas parciales
+    # Cross product between partial derivatives
     cross_product = d_kx.cross(d_ky)
 
-    # Calcular el producto punto entre d y el producto cruzado
+    # Dot product between d and the cross product
     dot_product = d.dot(cross_product)
 
-    # Calcular la norma de d al cubo
+    # Cubic norm of d
     d_norm = d.norm()**3
 
-    # Definir el integrando
+    # Integrand
     berryC = dot_product / d_norm
 
-    # Simplificar el integrando
+    # Simplify the integrand
     berryC_s = sp.simplify(2*berryC)
 
-    # Generar el código LaTeX
+    # Generate the LaTeX code
     latex_output = sp.latex(berryC_s)
     
-    display(Math(r"\text{Curvatura de Berry} \;  \cdot \Omega(k): \quad " + latex_output))
+    display(Math(r"\text{Berry curvature} \;  \cdot \Omega(k): \quad " + latex_output))
     
-    # Devolver el resultado simplificado y el código en LaTeX
+    # Return the simplified result and the LaTeX code
     return berryC_s, latex_output
 
 
 
 
-def plot_curvatura_de_berry(d, k_vars, params_symbols, params_values, 
-                            k_range=(-np.pi, np.pi), num_points=100):
-    """
-    Calcula y visualiza la curvatura y conexión de Berry para un sistema dado.
+def plot_berry_curvature(d, k_vars, params_symbols, params_values,
+                         k_range=(-np.pi, np.pi), num_points=100):
+    """Compute and plot Berry curvature and connection for a given system.
 
-    Parámetros:
+    Parameters
     ----------
-    d : tuple o list
-        Vector d(k) en términos de las variables k y parámetros simbólicos.
-        Por ejemplo: (d_x, d_y, d_z)
+    d : tuple or list
+        Vector ``d(k)`` written in terms of the momentum variables and symbolic
+        parameters, e.g. ``(d_x, d_y, d_z)``.
 
     k_vars : list
-        Lista de símbolos de variables de momento, típicamente [kx, ky].
+        List of momentum variable symbols, typically ``[kx, ky]``.
 
     params_symbols : list
-        Lista de símbolos de parámetros del sistema, por ejemplo [v, a, alpha, u].
+        Symbols of the system parameters such as ``[v, a, alpha, u]``.
 
     params_values : dict
-        Diccionario que mapea los nombres de los parámetros a sus valores numéricos.
-        Por ejemplo: {'v':1.0, 'a':1.0, 'alpha':1.0, 'u':1.0}
+        Dictionary mapping parameter names to numerical values, e.g.
+        ``{'v':1.0, 'a':1.0, 'alpha':1.0, 'u':1.0}``.
 
-    k_range : tuple, opcional
-        Rango para cada variable de momento, por defecto (-π, π).
+    k_range : tuple, optional
+        Range for each momentum variable, default ``(-π, π)``.
 
-    num_points : int, opcional
-        Número de puntos en cada dirección de la malla de k-space, por defecto 100.
+    num_points : int, optional
+        Number of points along each direction in ``k``-space, default ``100``.
 
-    Retorna:
+    Returns
     -------
     None
-        Muestra los gráficos de la curvatura y conexión de Berry.
+        The function displays the Berry curvature and connection plots.
     """
     
     # Asegurarse de que se trabaja en 2D
     if len(k_vars) != 2:
-        raise ValueError("Esta función solo soporta sistemas 2D con dos variables de momento (kx, ky).")
+        raise ValueError("This function only supports 2D systems with two momentum variables (kx, ky).")
     
-    # Descomponer las variables de momento y los parámetros
+    # Decompose momentum variables and parameters
     kx, ky = k_vars
     param_symbols = params_symbols
     param_names = [str(symbol) for symbol in param_symbols]
     
-    # Verificar que todos los parámetros tengan valores proporcionados
+    # Check that all parameters have provided values
     for name in param_names:
         if name not in params_values:
-            raise ValueError(f"Falta el valor para el parámetro '{name}' en params_values.")
+            raise ValueError(f"Parameter value missing for '{name}' en params_values.")
     
-    # Paso 1: Calcular la Curvatura de Berry Simbólicamente
-    def calcular_curvatura_de_berry(d, kx, ky):
-        """
-        Calcula la curvatura de Berry simbólicamente.
+    # Step 1: Compute the Berry curvature symbolically
+    def compute_berry_curvature(d, kx, ky):
+        """Symbolically compute the Berry curvature.
 
-        Parámetros:
+        Parameters
         ----------
-        d : tuple o list
-            Vector d(k) en términos de kx y ky.
+        d : tuple or list
+            Vector ``d(k)`` in terms of ``kx`` and ``ky``.
 
         kx, ky : SymPy Symbols
-            Símbolos de las variables de momento.
+            Momentum variables.
 
-        Retorna:
+        Returns
         -------
         berryC_s : SymPy Expr
-            Expresión simbólica simplificada de la curvatura de Berry.
+            Simplified expression for the Berry curvature.
         """
         # Vector d(k)
         d_vec = Matrix(d)
@@ -249,38 +258,37 @@ def plot_curvatura_de_berry(d, k_vars, params_symbols, params_values,
         # Norma de d al cubo
         d_norm = d_vec.norm()**3
         
-        # Curvatura de Berry
+        # Berry curvature
         berryC = dot_product / d_norm
         
-        # Simplificar la expresión
+        # Simplify the expression
         berryC_s = simplify(2*berryC)
         
         return berryC_s
     
-    # Paso 2: Calcular la Conexión de Berry Simbólicamente
-    def calcular_conexion_de_berry(d, kx, ky):
-        """
-        Calcula la conexión de Berry simbólicamente para un sistema de dos bandas.
+    # Step 2: Compute the Berry connection symbolically
+    def compute_berry_connection(d, kx, ky):
+        """Symbolically compute the Berry connection for a two-band system.
 
-        Parámetros:
+        Parameters
         ----------
-        d : tuple o list
-            Vector d(k) en términos de kx y ky.
-        
+        d : tuple or list
+            Vector ``d(k)`` in terms of ``kx`` and ``ky``.
+
         kx, ky : SymPy Symbols
-            Símbolos de las variables de momento.
-        
-        Retorna:
+            Momentum variables.
+
+        Returns
         -------
         A_x_s, A_y_s : SymPy Expr
-            Expresiones simbólicas simplificadas de las componentes de la conexión de Berry.
+            Simplified expressions for the components of the Berry connection.
         """
         # Definir el Hamiltoniano H(k) = d(k) · sigma
         sigma_x, sigma_y, sigma_z = sp.symbols('sigma_x sigma_y sigma_z')
         H = d[0]*sigma_x + d[1]*sigma_y + d[2]*sigma_z
 
         # Calcular los estados propios de H
-        # Para un Hamiltoniano de dos bandas, los estados propios se pueden escribir en términos de d(k)
+        # For a two-band Hamiltonian the eigenstates can be written in terms of d(k)
         # Estado positivo
         norm = sp.sqrt(d[0]**2 + d[1]**2 + d[2]**2)
         u_plus = Matrix([
@@ -288,7 +296,7 @@ def plot_curvatura_de_berry(d, k_vars, params_symbols, params_values,
             [d[2] + norm]
         ]) / sp.sqrt(2*norm*(norm + d[2]))
         
-        # Estado negativo (opcional, aquí nos enfocamos en u_plus)
+        # Negative state (optional, here we focus on u_plus)
         # u_minus = Matrix([
         #     [ -d[0] + sympy_I*d[1]],
         #     [d[2] + norm]
@@ -301,7 +309,7 @@ def plot_curvatura_de_berry(d, k_vars, params_symbols, params_values,
         du_k_dkx = u_k.diff(kx)
         du_k_dky = u_k.diff(ky)
 
-        # Conexión de Berry
+        # Berry connection
         A_x = sp.I * (u_k.H * du_k_dkx)[0]
         A_y = sp.I * (u_k.H * du_k_dky)[0]
 
@@ -311,19 +319,19 @@ def plot_curvatura_de_berry(d, k_vars, params_symbols, params_values,
 
         return A_x, A_y
     
-    # Paso 3: Calcular Simbólicamente la Curvatura de Berry
-    berryC_s = calcular_curvatura_de_berry(d, kx, ky)
+    # Step 3: Symbolically compute the Berry curvature
+    berryC_s = compute_berry_curvature(d, kx, ky)
     
-    # Generar y mostrar el código LaTeX para la curvatura de Berry
-    display(Math(r"\text{Curvatura de Berry} \; \Omega(k): \quad " + latex(berryC_s)))
+    # Generate and display LaTeX code for the Berry curvature
+    display(Math(r"\text{Berry curvature} \; \Omega(k): \quad " + latex(berryC_s)))
     
-    # Paso 4: Calcular Simbólicamente la Conexión de Berry
-    A_x_s, A_y_s = calcular_conexion_de_berry(d, kx, ky)
+    # Step 4: Symbolically compute the Berry connection
+    A_x_s, A_y_s = compute_berry_connection(d, kx, ky)
     
-    # Generar y mostrar el código LaTeX para la conexión de Berry
-    display(Math(r"\text{Conexión de Berry} \; \mathbf{A}(k): \quad " + latex(Matrix([A_x_s, A_y_s]))))
+    # Generate and display LaTeX code for the Berry connection
+    display(Math(r"\text{Berry connection} \; \mathbf{A}(k): \quad " + latex(Matrix([A_x_s, A_y_s]))))
     
-    # Paso 5: Convertir las Expresiones Simbólicas en Funciones Numéricas
+    # Step 5: Convert symbolic expressions into numerical functions
     # Preparar las variables para lambdify: [kx, ky, param1, param2, ...]
     vars_lambdify = [kx, ky] + param_symbols
     berryC_func = lambdify(vars_lambdify, berryC_s, modules=['numpy'])
@@ -336,11 +344,11 @@ def plot_curvatura_de_berry(d, k_vars, params_symbols, params_values,
     ky_vals = np.linspace(k_min, k_max, num_points)
     KX, KY = np.meshgrid(kx_vals, ky_vals)
     
-    # Paso 7: Evaluar la Curvatura y Conexión de Berry en Cada Punto de la Malla
-    # Preparar los parámetros en el orden de param_symbols
+    # Step 7: Evaluate Berry curvature and connection on the grid
+    # Prepare parameters in the order of param_symbols
     param_order = [params_values[name] for name in param_names]
     
-    # Paso 7.1: Ignorar las advertencias de división por cero
+    # Step 7.1: Ignore divide by zero warnings
     with np.errstate(divide='ignore', invalid='ignore'):
         BerryC = berryC_func(KX, KY, *param_order)
         A_x = A_x_func(KX, KY, *param_order)
@@ -355,41 +363,41 @@ def plot_curvatura_de_berry(d, k_vars, params_symbols, params_values,
     A_x = np.real(A_x)
     A_y = np.real(A_y)
     
-    # Paso 9: Normalizar las Componentes de la Conexión de Berry para el Quiver
-    # Calcular la magnitud de la conexión
+    # Paso 9: Normalizar las Componentes de la Berry connection para el Quiver
+    # Compute the magnitude of the connection
     magnitude_conn = np.sqrt(A_x**2 + A_y**2)
-    # Evitar división por cero
+    # Avoid division by zero
     magnitude_conn[magnitude_conn == 0] = 1
     U = A_x / magnitude_conn
     V = A_y / magnitude_conn
     
-    # Paso 10: Reducir la Densidad de los Vectores para Mejorar la Visualización
-    stride = max(num_points // 40, 1)  # Ajusta según el número de puntos
+    # Step 10: Reduce vector density for better visualization
+    stride = max(num_points // 40, 1)  # Adjust according to the number of points
     KX_quiver = KX[::stride, ::stride]
     KY_quiver = KY[::stride, ::stride]
     U_quiver = U[::stride, ::stride]
     V_quiver = V[::stride, ::stride]
     magnitude_quiver = magnitude_conn[::stride, ::stride]
     
-    # Paso 11: Visualizar los Gráficos
+    # Step 11: Plot the figures
     fig, axes = plt.subplots(1, 2, figsize=(18, 6))
     
-    # Gráfico 1: Mapa de Calor de la Curvatura de Berry
+    # Figure 1: Heat map of the Berry curvature
     ax1 = axes[0]
     contour = ax1.contourf(KX, KY, BerryC, levels=100, cmap='PiYG')
-    fig.colorbar(contour, ax=ax1, label='Curvatura de Berry')
+    fig.colorbar(contour, ax=ax1, label='Berry curvature')
     ax1.set_xlabel('$k_x$')
     ax1.set_ylabel('$k_y$')
-    ax1.set_title('Curvatura de Berry en $k$-space')
+    ax1.set_title('Berry curvature en $k$-space')
     
-    # Gráfico 2: Campo Vectorial de la Conexión de Berry
+    # Figure 2: Vector field of the Berry connection
     ax2 = axes[1]
     quiver = ax2.quiver(KX_quiver, KY_quiver, U_quiver, V_quiver, 
                         magnitude_quiver, cmap='inferno_r', pivot='middle', scale=50)
-    fig.colorbar(quiver, ax=ax2, label='Magnitud de la Conexión de Berry')
+    fig.colorbar(quiver, ax=ax2, label='Magnitud de la Berry connection')
     ax2.set_xlabel('$k_x$')
     ax2.set_ylabel('$k_y$')
-    ax2.set_title('Conexión de Berry en $k$-space')
+    ax2.set_title('Berry connection en $k$-space')
     
     plt.tight_layout()
     plt.savefig('ConexionYCurvatura.png')
@@ -423,28 +431,28 @@ def compute_eigensystem(H_matrix, previous_evecs=None, threshold=None):
     return evals_sorted, evecs_sorted
 
 
-def calcular_mapa_gap_chern_Yuriko_act(Hamiltoniano, params, param_var1, rango_var1, param_var2, rango_var2, N=100, Nc=11):
+def compute_gap_chern_map(Hamiltoniano, params, param_var1, rango_var1, param_var2, rango_var2, N=100, Nc=11):
     import numpy as np
     import matplotlib.pyplot as plt
     from numpy import linalg as LA
     from tqdm.notebook import tqdm
 
-    # Desempaquetar los rangos de los parámetros
+    # Unpack parameter ranges
     inicio1, fin1, num1 = rango_var1
     inicio2, fin2, num2 = rango_var2
 
-    # Crear los arrays de valores para cada parámetro
+    # Create the arrays of parameter values
     valores1 = np.linspace(inicio1, fin1, num1)
     valores2 = np.linspace(inicio2, fin2, num2)
 
-    # Crear una cuadrícula de valores
+    # Create a grid of values
     grid1, grid2 = np.meshgrid(valores1, valores2)
 
-    # Inicializar las matrices de resultados
+    # Initialize result matrices
     Gap_map = np.zeros_like(grid1, dtype=float)
     Chern_map = np.zeros_like(grid1, dtype=float)
 
-    # Parámetros del espacio de momentos
+    # Momentum-space parameters
     a = params.get('a', 1.0)
     kx_vals = np.linspace(-np.pi / a, np.pi / a, N, endpoint=False)
     ky_vals = np.linspace(-np.pi / a, np.pi / a, N, endpoint=False)
@@ -454,7 +462,7 @@ def calcular_mapa_gap_chern_Yuriko_act(Hamiltoniano, params, param_var1, rango_v
     epsilon = 1e-10
     delta_k = 1e-6
 
-    # Precalcular índices para la submalla si N != Nc
+    # Precompute submesh indices when N != Nc
     if N != Nc:
         indices_kx = np.linspace(0, N - 1, Nc, dtype=int)
         indices_ky = np.linspace(0, N - 1, Nc, dtype=int)
@@ -462,7 +470,7 @@ def calcular_mapa_gap_chern_Yuriko_act(Hamiltoniano, params, param_var1, rango_v
         indices_kx = np.arange(N)
         indices_ky = np.arange(N)
 
-    # Función auxiliar para calcular U_j con desplazamiento si es necesario
+    # Auxiliary function to compute U_j with shifts if needed
     def compute_U(v1, kx1, ky1, v2, kx2, ky2, b, num_bandas_ocupadas, params, shift_kx=False, shift_ky=False):
         U = np.vdot(v1, v2)
         if np.abs(U) < epsilon:
@@ -489,24 +497,24 @@ def calcular_mapa_gap_chern_Yuriko_act(Hamiltoniano, params, param_var1, rango_v
 
         return U_normalized
 
-    # Definimos un valor mínimo para E_gap para evitar -log(0)
+    # Define a minimum value for E_gap to avoid -log(0)
     min_gap_threshold = 1e-6
 
     total_iterations = grid1.size
-    progress_bar = tqdm(total=total_iterations, desc="Procesando", unit="iteración")
+    progress_bar = tqdm(total=total_iterations, desc="Processing", unit="iteration")
 
     for idx in np.ndindex(grid1.shape):
         i, j = idx
-        # Actualizar los parámetros variables
+        # Update the varying parameters
         params[param_var1] = grid1[idx]
         params[param_var2] = grid2[idx]
 
-        # Inicializar variables para el cálculo del gap
-        # Ahora el gap se definirá como la distancia mínima al cero energético.
+        # Initialize variables for the gap calculation
+        # The gap is defined as the minimum distance to zero energy.
         gap_local = np.inf
 
         # Primero calculamos todos los autovectores en la malla completa de k
-        # También determinamos el número de bandas ocupadas una sola vez
+        # Determine the number of occupied bands only once
         previous_evecs = None
         first_eigvals = None
         eigenvectors = None
@@ -520,7 +528,7 @@ def calcular_mapa_gap_chern_Yuriko_act(Hamiltoniano, params, param_var1, rango_v
                     eigvals, eigvecs = compute_eigensystem(H_k)
                 
                 if first_eigvals is None:
-                    # Determinar número de bandas ocupadas (mitad inferiores)
+                    # Determine the number of occupied (lower) bands
                     dim = H_k.shape[0]
                     num_bandas_ocupadas = dim // 2
                     eigenvectors = np.zeros((N, N, dim, num_bandas_ocupadas), dtype=complex)
@@ -529,14 +537,14 @@ def calcular_mapa_gap_chern_Yuriko_act(Hamiltoniano, params, param_var1, rango_v
                 # Guardamos los autovectores de las bandas ocupadas
                 eigenvectors[ix, iy, :, :] = eigvecs[:, :num_bandas_ocupadas]
 
-                # Calcular el gap local como la mínima distancia a cero
+                # Compute the local gap as the minimum distance to zero
                 min_abs_eig = np.min(np.abs(eigvals))
                 if min_abs_eig < gap_local:
                     gap_local = min_abs_eig
 
                 previous_evecs = eigvecs
 
-        # Cálculo del número de Chern
+        # Chern number calculation
         Chern_total = 0.0
         for b in range(num_bandas_ocupadas):
             Chern_banda = 0.0
@@ -584,7 +592,7 @@ def calcular_mapa_gap_chern_Yuriko_act(Hamiltoniano, params, param_var1, rango_v
         progress_bar.update(1)
 
     progress_bar.close()
-    print("Cálculo completado.")
+    print("Computation finished.")
 
     # Generar los plots
     fig, axs = plt.subplots(1, 2, figsize=(16, 6))
@@ -601,10 +609,10 @@ def calcular_mapa_gap_chern_Yuriko_act(Hamiltoniano, params, param_var1, rango_v
     cmap = plt.get_cmap('inferno_r', num_colors)
     im2 = axs[1].imshow(Chern_map, origin='lower', extent=extent, aspect='auto', cmap=cmap)
     cbar2 = fig.colorbar(im2, ax=axs[1])
-    cbar2.set_label('Número de Chern')
+    cbar2.set_label('Chern number')
     axs[1].set_xlabel(param_var1)
     axs[1].set_ylabel(param_var2)
-    axs[1].set_title('Mapa del Número de Chern')
+    axs[1].set_title('Chern number map')
 
     plt.tight_layout()
     nombre_figura = f"{Hamiltoniano.__name__}_GapAndChernMap_Optimizado.png"
@@ -619,16 +627,15 @@ from numpy import linalg as LA
 import matplotlib.pyplot as plt
 
 
-def calcular_chern_banda(Hamiltoniano, params ,eigenvectors, b, kx_vals, ky_vals):
-    """
-    Calcula el número de Chern para una banda específica a partir de los autovectores en el espacio k,
-    utilizando la función compute_U.
+def compute_band_chern(Hamiltoniano, params, eigenvectors, b, kx_vals, ky_vals):
+    """Compute the Chern number for a specific band from the eigenvectors in
+    ``k``-space using ``compute_U``.
     """
     Nkx, Nky, dim = eigenvectors.shape
     epsilon = 1e-10  # Umbral para evitar divisiones por cero
-    delta_k = 1e-6   # Desplazamiento pequeño en k
+    delta_k = 1e-6   # small shift in k
 
-    # Definir la función compute_U
+    # Define the function compute_U
     def compute_U(v1, kx1, ky1, v2, kx2, ky2, b, params, shift_kx=False, shift_ky=False):
         U = np.vdot(v1, v2)
         if np.abs(U) < epsilon:
@@ -653,23 +660,23 @@ def calcular_chern_banda(Hamiltoniano, params ,eigenvectors, b, kx_vals, ky_vals
 
         # Normalizar U
         if np.abs(U) < epsilon:
-            U_normalized = 1.0  # Asignamos 1 para evitar división por cero
+            U_normalized = 1.0  # Set to 1 to avoid division by zero
         else:
             U_normalized = U / np.abs(U)
 
         return U_normalized
 
-    # Inicializar el número de Chern
+    # Initialize Chern number
     ChernNumber = 0.0
 
     # Iterar sobre la malla de puntos k
     for iy in range(Nky):
         for ix in range(Nkx):
-            # Índices de los vecinos con condiciones de contorno periódicas
+            # Indices of neighbors with periodic boundary conditions
             ix_plus = (ix + 1) % Nkx
             iy_plus = (iy + 1) % Nky
 
-            # Autovectores en los cuatro vértices de la plaqueta
+            # Eigenvectors at the four plaquette vertices
             v_ij = eigenvectors[ix, iy, :]
             v_ipj = eigenvectors[ix_plus, iy, :]
             v_ipjp = eigenvectors[ix_plus, iy_plus, :]
@@ -684,13 +691,13 @@ def calcular_chern_banda(Hamiltoniano, params ,eigenvectors, b, kx_vals, ky_vals
             kx_ijp = kx_vals[ix]
             ky_ijp = ky_vals[iy_plus]
 
-            # Cálculo de las superposiciones (variables de enlace)
+            # Calculation of the overlaps (link variables)
             U1 = compute_U(v_ij, kx_ij, ky_ij, v_ipj, kx_ipj, ky_ipj,b,params, shift_kx=True)
             U2 = compute_U(v_ipj, kx_ipj, ky_ipj, v_ipjp, kx_ipjp, ky_ipjp, b,params,shift_ky=True)
             U3 = compute_U(v_ipjp, kx_ipjp, ky_ipjp, v_ijp, kx_ijp, ky_ijp, b,params,shift_kx=True)
             U4 = compute_U(v_ijp, kx_ijp, ky_ijp, v_ij, kx_ij, ky_ij, b, params,shift_ky=True)
 
-            # Curvatura de Berry para la plaqueta
+            # Berry curvature para la plaqueta
             F_ij = np.angle(U1 * U2 * U3 * U4)
             ChernNumber += F_ij
 
@@ -699,7 +706,7 @@ def calcular_chern_banda(Hamiltoniano, params ,eigenvectors, b, kx_vals, ky_vals
 
     return ChernNumber
 
-def Calculate_Everything(Ham, k_values, params, all_bands=True, bands=0):
+def compute_everything(Ham, k_values, params, all_bands=True, bands=0):
 # Rango de valores de k
     Nk = len(k_values)
     dim=Ham(0,0,**params).shape[0]
@@ -710,7 +717,7 @@ def Calculate_Everything(Ham, k_values, params, all_bands=True, bands=0):
         b = dim
 
 
-    # Inicializar arrays para energías y autovectores
+    # Initialize arrays for energies and eigenvectors
     eigenenergies = np.zeros((Nk, Nk, b))
     eigenvectors = np.zeros((Nk, Nk, dim, b), dtype=complex)
 
@@ -718,7 +725,7 @@ def Calculate_Everything(Ham, k_values, params, all_bands=True, bands=0):
 
     
 
-    # Cálculo de los autovectores en la malla kx-ky
+    # Compute eigenvectors on the kx-ky mesh
     for iy, ky in enumerate(k_values):
         for ix, kx in enumerate(k_values):
             H_k = Ham(kx, ky, **params)

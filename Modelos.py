@@ -10,15 +10,19 @@ def TP(A, B):
     return np.kron(A, B)
 
 def QWZ(kx, ky, v, a, u, alpha, eps):
-    """
-    Modelo QWZ.
+    """QWZ model Hamiltonian.
 
-    Parámetros:
-    - kx, ky: Componentes del momento.
-    - a, u , v: Parámetros del modelo.
+    Parameters
+    ----------
+    kx, ky : float
+        Momentum components.
+    a, u, v : float
+        Model parameters.
 
-    Retorna:
-    - Matriz 2x2 del Hamiltoniano.
+    Returns
+    -------
+    ndarray
+        2x2 Hamiltonian matrix.
     """
     d_x = (v / a) * np.sin(kx * a * alpha)
     d_y = (v / a) * np.sin(ky * a * alpha)
@@ -33,15 +37,19 @@ def QWZ(kx, ky, v, a, u, alpha, eps):
     return H
 
 def ChernInsulator(kx, ky, v, a, m0, m1):
-    """
-    Aislante de Chern.
+    """Chern insulator model.
 
-    Parámetros:
-    - kx, ky: Componentes del momento.
-    - v, a, m0, m1: Parámetros del modelo.
+    Parameters
+    ----------
+    kx, ky : float
+        Momentum components.
+    v, a, m0, m1 : float
+        Model parameters.
 
-    Retorna:
-    - Matriz 2x2 del Hamiltoniano.
+    Returns
+    -------
+    ndarray
+        2x2 Hamiltonian matrix.
     """
     d_x = (v / a) * np.sin(kx * a)
     d_y = (v / a) * np.sin(ky * a)
@@ -55,17 +63,21 @@ def ChernInsulator(kx, ky, v, a, m0, m1):
     return H
 
 
-def ModifiedMultiLayerQWZ(kx, ky, v, a, u, C,alpha, eps):
+def ModifiedMultiLayerQWZ(kx, ky, v, a, u, C, alpha, eps):
+    """Multilayer QWZ model.
+
+    Parameters
+    ----------
+    kx, ky : float
+        Momentum components.
+    a, u, v, C : float
+        Model parameters.
+
+    Returns
+    -------
+    ndarray
+        4x4 Hamiltonian matrix.
     """
-    Modelo Multilayer QWZ.
-
-    Parámetros:
-    - kx, ky: Componentes del momento.
-    - a, u , v, C: Parámetros del modelo.
-
-    Retorna:
-    - Matriz 4x4 del Hamiltoniano.
-    """    
     sigma_0 = np.array([[1, 0], [0, 1]])
     sigma_x = np.array([[0, 1], [1, 0]])
     sigma_y = np.array([[0, -1j], [1j, 0]])
@@ -78,7 +90,7 @@ def ModifiedMultiLayerQWZ(kx, ky, v, a, u, C,alpha, eps):
 
 def Graphene(kx,ky, Delta, t):
     
-    # Definir el vector d(k)
+    # Define the vector d(k)
     d = (
         t*np.cos(kx)*(1+2*np.cos(np.sqrt(3)/2*ky)*np.cos(3*kx/2))+np.sin(kx)*(2*np.cos(np.sqrt(3)/2*ky)*np.sin(3*kx/2)), 
         Delta*np.sin(kx)*(-1-2*np.cos(np.sqrt(3)/2*ky)*np.cos(3*kx/2))+np.cos(kx)*(2*np.cos(np.sqrt(3)/2*ky)*np.sin(3*kx/2)), 
@@ -95,29 +107,28 @@ def Graphene(kx,ky, Delta, t):
 
 
 def HgTeQW(kx, ky, GE, GH, C0=0.0, C2=0.0, M0=1.0, M2=1.0, A=1.0):
-    """
-    Calcula el Hamiltoniano para un Quantum Well de HgTe.
+    """Hamiltonian for a HgTe quantum well.
 
-    Parámetros:
+    Parameters
     ----------
     kx, ky : float
-        Componentes del momento.
+        Momentum components.
     GE, GH : float
-        Parámetros de separación.
-    C0, C2, M0, M2, A : float, opcional
-        Constantes del modelo con valores por defecto.
+        Splitting parameters.
+    C0, C2, M0, M2, A : float, optional
+        Model constants with default values.
 
-    Retorna:
+    Returns
     -------
-    H_total : ndarray de 4x4
-        Matriz Hamiltoniana total.
+    ndarray
+        Full 4×4 Hamiltonian matrix.
     """
     # Matrices de Pauli
     sigma_x = np.array([[0, 1], [1, 0]], dtype=complex)
     sigma_y = np.array([[0, -1j], [1j, 0]], dtype=complex)
     sigma_z = np.array([[1, 0], [0, -1]], dtype=complex)
 
-    # Función para calcular ε(k) y M(k)
+    # Function to compute ε(k) y M(k)
     def epsilon_k(kx, ky):
         k2 = kx**2 + ky**2
         return C0 + C2 * k2
@@ -132,11 +143,11 @@ def HgTeQW(kx, ky, GE, GH, C0=0.0, C2=0.0, M0=1.0, M2=1.0, A=1.0):
         H = epsilon_k(kx, ky) * np.eye(2) + M_k(kx, ky) * sigma_z + A_term
         return H
 
-    # Hamiltoniano h_-(k) como el conjugado hermítico de h_+(-k)
+    # Hamiltonian h_-(k) as the Hermitian conjugate of h_+(-k)
     def h_minus(kx, ky):
         return h_plus(-kx, -ky).conj().T
 
-    # Término de separación H_s
+    # Splitting term H_s
     def splitting_term(GE, GH):
         return np.array([[GE,  0,  0,  0],
                          [0,  GH, 0,  0],
@@ -151,7 +162,7 @@ def HgTeQW(kx, ky, GE, GH, C0=0.0, C2=0.0, M0=1.0, M2=1.0, A=1.0):
     H0 = np.block([[H_plus, np.zeros((2, 2), dtype=complex)],
                    [np.zeros((2, 2), dtype=complex), H_minus]])
 
-    # Añadir el término de separación
+    # Add the splitting term
     H_total = H0 + splitting_term(GE, GH)
 
     return H_total
@@ -163,12 +174,12 @@ def LatticeHgTeQW(kx, ky, GE, GH, a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1.0, A=1.0):
     """
     Calcula el Hamiltoniano para un Quantum Well de HgTe.
 
-    Parámetros:
+    Parameters:
     ----------
     kx, ky : float
         Componentes del momento.
     GE, GH : float
-        Parámetros de separación.
+        Splitting parameters.
     C0, C2, M0, M2, A : float, opcional
         Constantes del modelo con valores por defecto.
 
@@ -182,7 +193,7 @@ def LatticeHgTeQW(kx, ky, GE, GH, a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1.0, A=1.0):
     sigma_y = np.array([[0, -1j], [1j, 0]], dtype=complex)
     sigma_z = np.array([[1, 0], [0, -1]], dtype=complex)
 
-    # Función para calcular ε(k) y M(k)
+    # Function to compute ε(k) y M(k)
     def epsilon_k(kx, ky, a):
         ck2 = 2 - np.cos(kx*a) - np.cos(ky*a)
         return C0 + 2*C2/(a**2) * ck2
@@ -197,11 +208,11 @@ def LatticeHgTeQW(kx, ky, GE, GH, a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1.0, A=1.0):
         H = epsilon_k(kx, ky,a) * np.eye(2) + M_k(kx, ky,a) * sigma_z + A_term
         return H
 
-    # Hamiltoniano h_-(k) como el conjugado hermítico de h_+(-k)
+    # Hamiltonian h_-(k) as the Hermitian conjugate of h_+(-k)
     def h_minus(kx, ky, a):
         return h_plus(-kx, -ky, a).conj().T
 
-    # Término de separación H_s
+    # Splitting term H_s
     def splitting_term(GE, GH):
         return np.array([[GE,  0,  0,  0],
                          [0,  GH, 0,  0],
@@ -216,7 +227,7 @@ def LatticeHgTeQW(kx, ky, GE, GH, a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1.0, A=1.0):
     H0 = np.block([[H_plus, np.zeros((2, 2), dtype=complex)],
                    [np.zeros((2, 2), dtype=complex), H_minus]])
 
-    # Añadir el término de separación
+    # Add the splitting term
     H_total = H0 + splitting_term(GE, GH)
 
     return H_total
@@ -227,12 +238,12 @@ def LatticeHgTeQWMixed(kx, ky, GE, GH, T=0., a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1
     """
     Calcula el Hamiltoniano para un Quantum Well de HgTe.
 
-    Parámetros:
+    Parameters:
     ----------
     kx, ky : float
         Componentes del momento.
     GE, GH : float
-        Parámetros de separación.
+        Splitting parameters.
     C0, C2, M0, M2, A : float, opcional
         Constantes del modelo con valores por defecto.
 
@@ -246,7 +257,7 @@ def LatticeHgTeQWMixed(kx, ky, GE, GH, T=0., a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1
     sigma_y = np.array([[0, -1j], [1j, 0]], dtype=complex)
     sigma_z = np.array([[1, 0], [0, -1]], dtype=complex)
 
-    # Función para calcular ε(k) y M(k)
+    # Function to compute ε(k) y M(k)
     def epsilon_k(kx, ky, a):
         ck2 = 2 - np.cos(kx*a) - np.cos(ky*a)
         return C0 + 2*C2/(a**2) * ck2
@@ -261,11 +272,11 @@ def LatticeHgTeQWMixed(kx, ky, GE, GH, T=0., a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1
         H = epsilon_k(kx, ky,a) * np.eye(2) + M_k(kx, ky,a) * sigma_z + A_term
         return H
 
-    # Hamiltoniano h_-(k) como el conjugado hermítico de h_+(-k)
+    # Hamiltonian h_-(k) as the Hermitian conjugate of h_+(-k)
     def h_minus(kx, ky, a):
         return h_plus(-kx, -ky, a).conj().T
 
-    # Término de separación H_s
+    # Splitting term H_s
     def splitting_term(GE, GH):
         return np.array([[GE,  0,  0,  0],
                          [0,  GH, 0,  0],
@@ -279,7 +290,7 @@ def LatticeHgTeQWMixed(kx, ky, GE, GH, T=0., a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1
     H0 = np.block([[H_plus,T*sigma_y],
                    [-T*sigma_y, H_minus]])
 
-    # Añadir el término de separación
+    # Add the splitting term
     H_total = H0 + splitting_term(GE, GH)
 
     return H_total
@@ -292,7 +303,7 @@ def SlabHam(kx,ky,kz, GE, GH, T=0.0, a=1.0, C0=0.0, C1=0.0, C2=0.0, M0=1.0, M1=1
     sigma_y = np.array([[0, -1j], [1j, 0]], dtype=complex)
     sigma_z = np.array([[1, 0], [0, -1]], dtype=complex)
 
-    # Función para calcular ε(k) y M(k)
+    # Function to compute ε(k) y M(k)
     def epsilon_k(kx, ky, a):
         ck2 = 2 - np.cos(kx*a) - np.cos(ky*a)
         return C0 + 2*C2/(a**2) * ck2 + 2*C1/(a**2) * (1-np.cos(kz*a))
@@ -307,11 +318,11 @@ def SlabHam(kx,ky,kz, GE, GH, T=0.0, a=1.0, C0=0.0, C1=0.0, C2=0.0, M0=1.0, M1=1
         H = epsilon_k(kx, ky,a) * np.eye(2) + M_k(kx, ky,a) * sigma_z + A_term
         return H
 
-    # Hamiltoniano h_-(k) como el conjugado hermítico de h_+(-k)
+    # Hamiltonian h_-(k) as the Hermitian conjugate of h_+(-k)
     def h_minus(kx, ky, a):
         return h_plus(-kx, -ky, a).conj().T
 
-    # Término de separación H_s
+    # Splitting term H_s
     def splitting_term(GE, GH):
         return np.array([[GE,  0,  0,  0],
                          [0,  GH, 0,  0],
@@ -325,7 +336,7 @@ def SlabHam(kx,ky,kz, GE, GH, T=0.0, a=1.0, C0=0.0, C1=0.0, C2=0.0, M0=1.0, M1=1
     H0 = np.block([[H_plus,1j*T*np.sin(kz*a)*sigma_y/a],
                    [-1j*T*sigma_y*np.sin(kz*a)/a, H_minus]])
 
-    # Añadir el término de separación
+    # Add the splitting term
     H_total = H0 + splitting_term(GE, GH)
 
     return H_total
@@ -335,12 +346,12 @@ def BHZ(kx, ky, G=0 , a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1.0, A=1.0,T=0):
     """
     Calcula el Hamiltoniano para el modelo BHZ con un G zeeman
 
-    Parámetros:
+    Parameters:
     ----------
     kx, ky : float
         Componentes del momento.
     G : float
-        Parámetros de separación.
+        Splitting parameters.
     C0, C2, M0, M2, A : float, opcional
         Constantes del modelo con valores por defecto.
 
@@ -354,7 +365,7 @@ def BHZ(kx, ky, G=0 , a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1.0, A=1.0,T=0):
     sigma_y = np.array([[0, -1j], [1j, 0]], dtype=complex)
     sigma_z = np.array([[1, 0], [0, -1]], dtype=complex)
 
-    # Función para calcular ε(k) y M(k)
+    # Function to compute ε(k) y M(k)
     def epsilon_k(kx, ky, a):
         ck2 = 2 - np.cos(kx*a) - np.cos(ky*a)
         return C0 + 2*C2/(a**2) * ck2
@@ -369,11 +380,11 @@ def BHZ(kx, ky, G=0 , a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1.0, A=1.0,T=0):
         H = epsilon_k(kx, ky,a) * np.eye(2) + M_k(kx, ky,a) * sigma_z + A_term
         return H
 
-    # Hamiltoniano h_-(k) como el conjugado hermítico de h_+(-k)
+    # Hamiltonian h_-(k) as the Hermitian conjugate of h_+(-k)
     def h_minus(kx, ky, a):
         return h_plus(kx, -ky, a)
 
-    # Término de separación H_s
+    # Splitting term H_s
     def splitting_term(G):
         return np.array([[-G,  0,  0,  0],
                          [0,  G, 0,  0],
@@ -388,7 +399,7 @@ def BHZ(kx, ky, G=0 , a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1.0, A=1.0,T=0):
     H0 = np.block([[H_plus, 1j*T*sigma_y],
                    [-1j*T*sigma_y, H_minus]])
 
-    # Añadir el término de separación
+    # Add the splitting term
     H_total = H0 + splitting_term(G)
 
     return H_total
@@ -414,32 +425,33 @@ def BHZ_h(kx, ky, G=0 , a=1.0, C0=0.0, C2=1.0, M0=1.0, M2=1.0, A=1.0,T=0):
 
 import numpy as np
 
-def BHZ_SC_Slab(kx, ky, kz, 
-           G=0.5, T=0.0, Delta=0.0, a=1.0, 
-           C0=0.0,C1=0.0, C2=1.0, M0=-1.0,M1=0.0, M2=1.0, A=1.0):
-    """
-    Calcula el Hamiltoniano BHZ+SC en una base de 8x8.
-    El modelo está basado en BHZ con términos superconductores y campos externos.
-    
-    Parámetros:
+def BHZ_SC_Slab(kx, ky, kz,
+           G=0.5, T=0.0, Delta=0.0, a=1.0,
+           C0=0.0, C1=0.0, C2=1.0, M0=-1.0, M1=0.0, M2=1.0, A=1.0):
+    """BHZ model with superconductivity in an 8×8 basis.
+
+    The model is based on BHZ including superconducting terms and external
+    fields.
+
+    Parameters
     ----------
     kx, ky : float
-        Componentes del momento en la zona de Brillouin.
+        Momentum components in the Brillouin zone.
     G : float
-        Acoplamiento tipo Zeeman en el término -G(tau_z sigma_z s_z).
+        Zeeman-like coupling appearing in ``-G(tau_z sigma_z s_z)``.
     T : float
-        Parámetro de acoplamiento -T(tau_z sigma_y s_y).
+        Coupling parameter ``-T(tau_z sigma_y s_y)``.
     Delta : float
-        Parámetro superconductivo -Delta(tau_y sigma_y s_z).
-    a : float, opcional
-        Constante de red.
-    C0, C2, M0, M2, A : float, opcionales
-        Parámetros del modelo BHZ estándar.
+        Superconducting parameter ``-Delta(tau_y sigma_y s_z)``.
+    a : float, optional
+        Lattice constant.
+    C0, C2, M0, M2, A : float, optional
+        Standard BHZ model parameters.
 
-    Retorna:
-    --------
-    H : ndarray (8x8, complejo)
-        Matriz Hamiltoniana BHZ+SC.
+    Returns
+    -------
+    ndarray (8×8)
+        BHZ+SC Hamiltonian matrix.
     """
 
     # Matrices de Pauli 2x2
@@ -462,7 +474,7 @@ def BHZ_SC_Slab(kx, ky, kz,
     sin_ky = np.sin(ky*a)
     sin_kz = np.sin(kz*a)
 
-    # Para hacer productos tensoriales 3 veces más fácil
+    # Helper to compute triple Kronecker products more easily
     def kron3(A, B, C):
         return np.kron(np.kron(A, B), C)
 
